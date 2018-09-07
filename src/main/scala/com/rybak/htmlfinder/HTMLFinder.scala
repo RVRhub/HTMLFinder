@@ -137,7 +137,7 @@ object HTMLFinder extends App with LazyLogging {
   }
 
   class NodeFeatures(
-                      val maxCountOfMatches: Int,
+//                      val maxCountOfMatches: Int,
                       val tagName: String,
                       val tagAttributes: Attributes,
                       val tagValue: String
