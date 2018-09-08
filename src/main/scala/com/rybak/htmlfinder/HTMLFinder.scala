@@ -2,64 +2,54 @@ package com.rybak.htmlfinder
 
 import java.io.File
 
-import com.rybak.htmlfinder.HTMLFinder.targetElementId
 import com.typesafe.scalalogging.LazyLogging
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Attributes, Document, Element}
 
+import scala.util.{Failure, Success, Try}
+
 object HTMLFinder extends App with LazyLogging {
 
   private val CHARSET_NAME = "utf8"
-
-  /*val resourcePathOrig = "samples/startbootstrap-sb-admin-2-examples/sample-0-origin.html"
-  val resourcePathSecond = "samples/startbootstrap-sb-admin-2-examples/sample-1-evil-gemini.html"*/
-
-  // val resourcePathSecond = "samples/sample-4-empty.html"
   val targetElementId: String = "make-everything-ok-button"
+  final val HTML: String = "html"
 
-  run()
+  runMatcher(args(0), args(1), targetElementId) match {
+    case Success(result) => logger.info(result)
+    case Failure(exception) => logger.error(exception.getMessage)
+  }
 
-  def run(): Unit = {
-    val resourcePathOrig = args(0)
-    val resourcePathSecond = args(1)
+  def runMatcher(resourcePathOrig: String, resourcePathSecond: String, targetElementId: String): Try[String] = Try{
 
-    val originDoc = getDocument(resourcePathOrig)
-    val originEl = findElementById(originDoc, targetElementId)
+    val originEl = findElementById(new File(resourcePathOrig), targetElementId)
 
-    if (originEl == null) {
-      println("Cannot find origin element by " + targetElementId)
-      return
+    val originFeatures = originEl.get match {
+      case null => throw new Exception("Cannot find origin element by " + targetElementId)
+      case _ => analyzeElement(originEl.get)
     }
 
-    val originFeatures = analyzeElement(originEl)
-
     val compDoc = getDocument(resourcePathSecond)
-
-    val matchedElement = findMatchedElement(compDoc, originFeatures)
+    val matchedElement = findMatchedElement(compDoc.get, originFeatures)
 
     matchedElement match {
-      case null => println("Tag is not found")
-      case _ => println(matchedElement.path)
+      case null => throw new Exception ("Tag is not found")
+      case _ => matchedElement.path
     }
   }
 
   def findMatchedElement(doc: Document, nodeFeatures: NodeFeatures): MatchedElement = {
-    val startedPath = "html"
+    val startPath = "html";
 
-    matchByFeatures(doc.body(), nodeFeatures, startedPath, 0, -1)
+    matchByFeatures(doc.body(), nodeFeatures, startPath, 0, 0)
   }
 
   def matchByFeatures(el: Element, originNodeFeatures: NodeFeatures, currPath: String, currMaxCountMatches: Int, childNum: Int): MatchedElement = {
     var matchedElement: MatchedElement = null
 
-    var path = currPath + " > " + el.tagName()
-
-    if (childNum != -1) {
-      path += "[" + childNum + "]"
-    }
+    val path = updatePath(currPath, el.tagName, childNum);
 
     var maxMatches = currMaxCountMatches
-    val matches = analyzeAndCountMatches(el, originNodeFeatures)
+    val matches = compareAndCountMatches(el, originNodeFeatures)
 
     if (matches > maxMatches) {
       maxMatches = matches
@@ -70,13 +60,7 @@ object HTMLFinder extends App with LazyLogging {
     val children = el.children()
 
     for (i <- 0 until children.size()) {
-      var numChild = -1
-
-      if (children.size() > 1) {
-        numChild = i
-      }
-
-      var matchedChildElement: MatchedElement = matchByFeatures(children.get(i), originNodeFeatures, path, matches, numChild)
+      val matchedChildElement: MatchedElement = matchByFeatures(children.get(i), originNodeFeatures, path, matches, i)
 
       if (matchedChildElement != null && matchedChildElement.countMatches > maxMatches) {
         matchedElement = matchedChildElement
@@ -87,25 +71,23 @@ object HTMLFinder extends App with LazyLogging {
     matchedElement
   }
 
-  def analyzeAndCountMatches(el: Element, originNodeFeatures: NodeFeatures): Int = {
+  def compareAndCountMatches(el: Element, originNodeFeatures: NodeFeatures): Int = {
     val nodeFeatures = analyzeElement(el)
 
     countMatches(originNodeFeatures, nodeFeatures)
   }
 
+  def findElementById(htmlFile: File, targetElementId: String): Try[Element] = Try {
+    Jsoup.parse(htmlFile, CHARSET_NAME, htmlFile.getAbsolutePath)
+  }.map(_.getElementById(targetElementId))
 
-  def findElementById(doc: Document, targetElementId: String): Element = {
-    doc.selectFirst("#" + targetElementId)
-  }
-
-  def getDocument(htmlFilePath: String): Document = {
+  def getDocument(htmlFilePath: String): Try[Document] = Try{
     val file = new File(htmlFilePath)
-
     Jsoup.parse(file, CHARSET_NAME, file.getAbsolutePath)
   }
 
   def analyzeElement(element: Element): NodeFeatures = {
-    val nodeFeatures = new NodeFeatures(
+    var nodeFeatures = new NodeFeatures(
       element.tagName(),
       element.attributes(),
       element.text
@@ -113,6 +95,7 @@ object HTMLFinder extends App with LazyLogging {
 
     nodeFeatures
   }
+
 
   def countMatches(first: NodeFeatures, second: NodeFeatures): Int = {
     if (first.tagName != second.tagName) {
@@ -136,8 +119,13 @@ object HTMLFinder extends App with LazyLogging {
     count
   }
 
+  def updatePath(currPath: String, tagName: String, childNum: Int): String = childNum match {
+    case 0 => currPath + " > " + tagName;
+    case _ => currPath + " > " + tagName + "[" + childNum + "]";
+  }
+
   class NodeFeatures(
-//                      val maxCountOfMatches: Int,
+                      //                      val maxCountOfMatches: Int,
                       val tagName: String,
                       val tagAttributes: Attributes,
                       val tagValue: String

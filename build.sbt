@@ -23,11 +23,12 @@ lazy val htmlFinder = (project in file(".")).
       "org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full
     ),
 
-    //util dependencies
+      //util dependencies
     libraryDependencies ++= Seq(
       "org.jsoup" % "jsoup" % "1.11.2",
       "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0",
-      "org.slf4j" % "slf4j-simple" % "1.6.4"
+      "ch.qos.logback" % "logback-classic" % "1.1.3",
+      "org.scalatest" %% "scalatest" % "3.0.5" % "test"
     ),
 
     fork in Test := true,
