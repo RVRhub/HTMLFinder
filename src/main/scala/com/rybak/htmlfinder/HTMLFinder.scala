@@ -6,7 +6,6 @@ import java.util
 import com.typesafe.scalalogging.LazyLogging
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Attribute, Attributes, Document, Element}
-import java.util.Iterator
 
 import scala.util.{Failure, Success, Try}
 
