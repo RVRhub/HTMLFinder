@@ -1,10 +1,12 @@
 package com.rybak.htmlfinder
 
 import java.io.File
+import java.util
 
 import com.typesafe.scalalogging.LazyLogging
 import org.jsoup.Jsoup
-import org.jsoup.nodes.{Attributes, Document, Element}
+import org.jsoup.nodes.{Attribute, Attributes, Document, Element}
+import java.util.Iterator
 
 import scala.util.{Failure, Success, Try}
 
@@ -96,27 +98,23 @@ object HTMLFinder extends App with LazyLogging {
     nodeFeatures
   }
 
-
   def countMatches(first: NodeFeatures, second: NodeFeatures): Int = {
-    if (first.tagName != second.tagName) {
-      return 0
-    }
+    if (first.tagName != second.tagName) return 0
 
-    var count = 0
-
-    if (first.tagValue == second.tagValue) {
-      count += 1
-    }
-
-    first.tagAttributes.forEach(attr => {
-      val attrFromMap: String = second.tagAttributes.get(attr.getKey)
-
-      if (attrFromMap != null && attrFromMap == attr.getValue) {
-        count += 1
+    def compareAttributes(attrs: util.Iterator[Attribute], currentAttr: Boolean, count: Int): Int = currentAttr match {
+      case false => count
+      case true => {
+        val attr = attrs.next()
+        val attrFromMap: String = second.tagAttributes.get(attr.getKey)
+        val isMatch = if (attrFromMap != null && attrFromMap == attr.getValue) count+1 else count
+        compareAttributes(attrs, attrs.hasNext, isMatch)
       }
-    })
+    }
 
-    count
+    def isSameTagValue = if(first.tagValue == second.tagValue) 1 else 0
+
+    val iterator = first.tagAttributes.iterator()
+    compareAttributes(iterator, iterator.hasNext, isSameTagValue)
   }
 
   def updatePath(currPath: String, tagName: String, childNum: Int): String = childNum match {
