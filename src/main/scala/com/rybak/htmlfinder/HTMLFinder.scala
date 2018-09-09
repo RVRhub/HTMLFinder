@@ -100,7 +100,7 @@ object HTMLFinder extends App with LazyLogging {
   def countMatches(first: NodeFeatures, second: NodeFeatures): Int = {
     if (first.tagName != second.tagName) return 0
 
-    def compareAttributes(attrs: util.Iterator[Attribute], currentAttr: Boolean, count: Int): Int = currentAttr match {
+    def compareAttributes(attrs: util.Iterator[Attribute], hasNext: Boolean, count: Int): Int = hasNext match {
       case false => count
       case true => {
         val attr = attrs.next()
